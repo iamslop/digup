@@ -1,0 +1,2486 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>digup — github footprint</title>
+  <meta name="description" content="digup pulls a GitHub account's public profile, bio, organisations, repositories and exposed commit emails into one clean page." />
+  <meta name="theme-color" content="#0c0c0e" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230c0c0e'/><text x='16' y='22' font-family='monospace' font-size='13' fill='%23e040a0' text-anchor='middle'>dg</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+:root {
+  --bg: #0c0c0e;
+  --surface: #131316;
+  --surface2: #1a1a1e;
+  --border: #2a2a30;
+  --border-bright: #3d3d48;
+  --pink: #e040a0;
+  --pink-dim: #a0306a;
+  --lilac: #9d7fe8;
+  --text: #e8e3ee;
+  --text-dim: #a09aaa;
+  --muted: #605868;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
+  --r: 8px;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html { color-scheme: dark; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a { color: var(--pink); }
+
+:focus-visible {
+  outline: 2px solid var(--lilac);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* no decorative background — just the colour */
+.bg { display: none; }
+
+/* ---------- topbar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px clamp(16px, 4vw, 48px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.brand-mark {
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.brand-mark b {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--pink);
+}
+
+.brand-sub {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rate {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  padding: 5px 10px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+.rate[data-low="1"] { color: #f87171; border-color: #7f1d1d; }
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ghost-btn:hover { border-color: var(--border-bright); color: var(--text); }
+
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.dot[data-on="1"] { background: var(--pink); }
+
+/* ---------- hero ---------- */
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 48px) 64px;
+}
+
+.hero {
+  padding-top: clamp(48px, 9vh, 96px);
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 18px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.spark { color: var(--pink); margin-right: 6px; }
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 5.5vw, 4rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+h1 em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--pink);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  padding-bottom: 0;
+}
+
+.lede {
+  max-width: 46ch;
+  margin: 18px auto 0;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(600px, 100%);
+  margin: 28px auto 0;
+  padding: 6px 6px 6px 16px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: border-color 0.15s;
+}
+
+.search:focus-within { border-color: var(--border-bright); }
+
+.at {
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  color: var(--pink);
+}
+
+#handle {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 6px;
+  border: 0;
+  background: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.95rem;
+}
+
+#handle::placeholder { color: var(--muted); }
+
+.scan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--pink);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.scan-btn:hover { background: #c8308a; }
+.scan-btn:active { opacity: 0.85; }
+.scan-btn svg { flex: none; }
+
+.recents {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+  min-height: 26px;
+}
+
+.recent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.recent img {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.recent:hover { border-color: var(--border-bright); color: var(--text); }
+
+.fineprint {
+  margin: 20px 0 0;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+
+/* ---------- status ---------- */
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 28px auto 0;
+  padding: 12px 18px;
+  max-width: 580px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--pink);
+  text-align: center;
+}
+
+.status[data-kind="error"] {
+  color: #f87171;
+  border-color: #7f1d1d;
+}
+
+.status-action { display: inline-flex; }
+
+.spinner {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-bright);
+  border-top-color: var(--pink);
+  animation: spin 0.7s linear infinite;
+  flex: none;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- panels ---------- */
+
+.results {
+  display: grid;
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.panel {
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+  padding: 22px;
+}
+
+.avatar-wrap {
+  display: block;
+  width: 80px; height: 80px;
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  flex: none;
+}
+
+.avatar-wrap img {
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+
+.identity { min-width: 0; }
+
+.identity h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.login {
+  display: inline-block;
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--pink);
+  text-decoration: none;
+}
+
+.login:hover { text-decoration: underline; }
+
+.login-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.login-row .login { margin-top: 0; }
+
+.cache-badge {
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  color: var(--muted);
+  padding: 2px 7px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.cache-badge[data-cached="1"] { color: var(--pink); border-color: var(--pink-dim); }
+
+.refresh-link {
+  padding: 0; border: 0; background: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.refresh-link:hover { color: var(--pink); }
+
+.bio {
+  margin: 10px 0 0;
+  max-width: 60ch;
+  color: var(--text-dim);
+  font-size: 0.87rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.bio.is-empty { color: var(--muted); font-style: italic; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-decoration: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+a.chip:hover { border-color: var(--border-bright); color: var(--text); }
+
+.stats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.stat {
+  padding: 12px 16px;
+  display: grid;
+  gap: 3px;
+  border-right: 1px solid var(--border);
+}
+
+.stat:last-child { border-right: 0; }
+
+.stat-label {
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 0.88fr 1.12fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.panel-head .ico { color: var(--pink); }
+
+.badge {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  padding: 1px 6px;
+  border-radius: var(--r);
+  background: var(--surface2);
+  color: var(--text-dim);
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.panel-note {
+  margin: 0;
+  padding: 12px 16px 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.mini-btn {
+  font-family: var(--mono);
+  font-size: 0.63rem;
+  color: var(--text-dim);
+  padding: 5px 9px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.mini-btn:hover { border-color: var(--border-bright); color: var(--text); }
+
+.mini-btn.primary {
+  border-color: var(--pink-dim);
+  background: var(--pink);
+  color: #fff;
+  font-weight: 500;
+}
+
+.mini-btn.primary:hover { background: #c8308a; }
+
+.mini-btn.danger { color: #f87171; }
+.mini-btn.danger:hover { border-color: #7f1d1d; }
+
+.mini-btn.wide {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 4px 12px 12px;
+  padding: 9px;
+  text-align: center;
+}
+
+.mini-input {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text);
+  padding: 5px 9px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  outline: none;
+  max-width: 108px;
+  transition: border-color 0.15s;
+}
+
+.mini-input:focus { border-color: var(--border-bright); }
+.mini-input::placeholder { color: var(--muted); }
+select.mini-input { cursor: pointer; }
+
+/* ---------- email list ---------- */
+
+.email-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0 8px;
+  display: grid;
+  gap: 1px;
+}
+
+.email-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.email-row:hover { background: var(--surface2); }
+
+.email-val {
+  padding: 0; border: 0; background: none;
+  color: var(--pink);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.email-val:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+
+.email-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.tag {
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  color: var(--muted);
+  padding: 1px 6px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.is-noreply .email-val { color: var(--pink-dim); opacity: 0.7; }
+
+.empty {
+  padding: 24px 16px 28px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.67rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.dig-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 4px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+
+.bar {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--pink);
+  transition: width 0.3s ease;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 14px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input { accent-color: var(--pink); width: 13px; height: 13px; cursor: pointer; }
+.toggle code { color: var(--pink); font-size: 0.95em; }
+
+/* ---------- repos ---------- */
+
+.lang-bar { padding: 14px 16px 0; display: grid; gap: 8px; }
+
+.lang-track {
+  display: flex;
+  gap: 2px;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.lang-seg { display: block; height: 100%; }
+
+.lang-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  color: var(--muted);
+}
+
+.lang-item { display: inline-flex; align-items: center; gap: 5px; }
+.lang-item i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+.repo-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0 8px 8px;
+}
+
+.repo {
+  padding: 12px 10px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.repo:hover { background: var(--surface2); }
+.repo + .repo { border-top: 1px solid var(--border); }
+
+.repo-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+}
+
+.repo-name {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color 0.12s;
+}
+
+.repo-name:hover { color: var(--pink); text-decoration: underline; text-underline-offset: 3px; }
+
+.repo-star {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.63rem;
+  color: var(--lilac);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.repo-desc {
+  margin: 5px 0 7px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.repo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+
+.repo-meta .lang { display: inline-flex; align-items: center; gap: 5px; }
+.repo-meta .lang i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.repo-meta .topic { color: var(--lilac); }
+
+/* ---------- footer ---------- */
+
+.foot {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+
+.foot span { color: var(--pink); }
+
+/* ---------- dialog + toast ---------- */
+
+.dialog {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text);
+  width: min(420px, 92vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialog-body { padding: 24px; display: grid; gap: 14px; }
+
+.dialog-body h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.5rem;
+}
+
+.dialog-body p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.77rem;
+  line-height: 1.65;
+}
+
+#tokenInput {
+  padding: 10px 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+#tokenInput:focus { border-color: var(--border-bright); }
+
+.dialog-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.hint { font-family: var(--mono); font-size: 0.58rem !important; color: var(--muted); }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 60;
+  transform: translate(-50%, 12px);
+  opacity: 0;
+  pointer-events: none;
+  padding: 9px 16px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.67rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 980px) {
+  .columns { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .brand-sub { display: none; }
+  .profile { grid-template-columns: 1fr; gap: 16px; padding: 18px; }
+  .avatar-wrap { width: 64px; height: 64px; }
+  .search { padding-left: 14px; }
+  .scan-btn { padding: 10px 14px; }
+  #handle { padding: 10px 6px; font-size: 0.9rem; }
+  .repo-star { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="./">
+      <span class="brand-mark">dig<b>up</b></span>
+      <span class="brand-sub">github footprint</span>
+    </a>
+    <div class="topbar-right">
+      <span id="rate" class="rate" title="GitHub API rate limit">rate —</span>
+      <button id="tokenBtn" class="ghost-btn" type="button" aria-haspopup="dialog">
+        <span id="tokenDot" class="dot" data-on="0"></span>
+        <span id="tokenLabel">add token</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow"><span class="spark">↳</span> enter a github handle</p>
+      <h1>what's behind<br /><em>the handle.</em></h1>
+      <p class="lede">The bio, orgs, repos, and any email addresses buried in public commits — all in one page.</p>
+
+      <form id="searchForm" class="search" autocomplete="off" novalidate>
+        <label class="sr-only" for="handle">GitHub username</label>
+        <span class="at" aria-hidden="true">@</span>
+        <input id="handle" name="handle" type="text" placeholder="torvalds" spellcheck="false" autocapitalize="off" autocorrect="off" />
+        <button class="scan-btn" type="submit">
+          scan
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
+        </button>
+      </form>
+
+      <div id="recents" class="recents" hidden></div>
+      <p class="fineprint">public data only · no login required · your token never leaves this browser</p>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite" hidden>
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="statusText"></span>
+      <span id="statusAction" class="status-action" hidden></span>
+    </div>
+
+    <section id="results" class="results" hidden>
+      <article class="panel profile">
+        <a id="avatarLink" class="avatar-wrap" target="_blank" rel="noopener">
+          <img id="avatar" alt="" width="112" height="112" />
+        </a>
+        <div class="identity">
+          <h2 id="displayName"></h2>
+          <div class="login-row">
+            <a id="loginLink" class="login" target="_blank" rel="noopener"></a>
+            <span id="cacheBadge" class="cache-badge" hidden></span>
+            <button id="refreshScan" class="refresh-link" type="button" hidden>refresh</button>
+          </div>
+          <p id="bio" class="bio"></p>
+          <div id="chips" class="chips"></div>
+        </div>
+        <div id="stats" class="stats"></div>
+      </article>
+
+      <div class="columns">
+        <article class="panel emails">
+          <header class="panel-head">
+            <h3><span class="ico">&#9829;</span> emails <span id="emailCount" class="badge">0</span></h3>
+            <div class="panel-actions">
+              <button id="copyEmails" class="mini-btn" type="button">copy all</button>
+              <button id="exportCsv" class="mini-btn" type="button">csv</button>
+            </div>
+          </header>
+          <p class="panel-note" id="emailNote">waiting for a handle…</p>
+          <ul id="emailList" class="email-list"></ul>
+          <div class="dig-progress" id="digProgress" hidden>
+            <div class="bar"><span id="digBar"></span></div>
+            <span id="digLabel"></span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="includeNoreply" />
+            <span>include <code>noreply</code> / bot addresses</span>
+          </label>
+        </article>
+
+        <article class="panel repos">
+          <header class="panel-head">
+            <h3><span class="ico">&#10047;</span> repositories <span id="repoCount" class="badge">0</span></h3>
+            <div class="panel-actions">
+              <input id="repoFilter" class="mini-input" type="search" placeholder="filter" aria-label="Filter repositories" />
+              <label class="sr-only" for="repoSort">Sort repositories</label>
+              <select id="repoSort" class="mini-input">
+                <option value="updated">updated</option>
+                <option value="stars">stars</option>
+                <option value="name">name</option>
+                <option value="created">created</option>
+              </select>
+            </div>
+          </header>
+          <div id="langBar" class="lang-bar" hidden></div>
+          <ul id="repoList" class="repo-list"></ul>
+          <button id="showMore" class="mini-btn wide" type="button" hidden>show more</button>
+        </article>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>digup</span> · built on the public GitHub API · be decent with what you find
+    </footer>
+  </main>
+
+  <dialog id="tokenDialog" class="dialog">
+    <div class="dialog-body">
+      <h3>add a token</h3>
+      <p>Unauthenticated requests allow 60 an hour — one deep scan can spend half of that. A token lifts it to 5,000 an hour and lets the account-email check run.</p>
+      <input id="tokenInput" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" aria-label="GitHub token" />
+      <div class="dialog-actions">
+        <button id="clearToken" class="mini-btn danger" type="button">remove</button>
+        <button id="cancelToken" class="mini-btn" type="button">cancel</button>
+        <button id="saveToken" class="mini-btn primary" type="button">save token</button>
+      </div>
+      <p class="hint">Stored in this browser's localStorage only. No scopes are needed for public data.</p>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ * vOidnet — github footprint
+ * Reads only public GitHub API data. The optional token lives in
+ * localStorage and is sent straight to api.github.com.
+ * ------------------------------------------------------------------ */
+
+const API = 'https://api.github.com';
+const TOKEN_KEY = 'voidnet.token';
+const RECENT_KEY = 'voidnet.recents';
+
+const MAX_REPOS = 1000;
+const API_PAGE = 100;
+const SCAN_REPOS = 12;
+const COMMITS_PER_REPO = 20;
+const REPO_CHUNK = 40;
+const SCAN_CONCURRENCY = 4;
+
+const CACHE_KEY = 'voidnet.cache.v1';
+const CACHE_FRESH_MS = 15 * 60 * 1000;          // no network at all inside this window
+const CACHE_MAX_AGE_MS = 30 * 24 * 3600 * 1000; // stale cache still beats an error
+const CACHE_LOGINS = 8;
+const CACHE_BUDGET = 3000000;                   // characters of localStorage to spend
+
+const state = {
+  token: readStorage(TOKEN_KEY) || '',
+  login: '',
+  user: null,
+  orgs: [],
+  repos: [],
+  emails: new Map(),
+  includeNoreply: false,
+  phase: 'idle',
+  scanToken: 0,
+  repoSort: 'updated',
+  repoQuery: '',
+  repoVisible: REPO_CHUNK,
+  fromCache: false,
+};
+
+const rate = { limit: 0, remaining: 0, reset: 0 };
+
+/* ---------------------------- utilities ---------------------------- */
+
+const $ = (sel, root = document) => root.querySelector(sel);
+
+const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+const exact = new Intl.NumberFormat('en');
+
+const num = (n) => (n == null ? '—' : compact.format(n));
+const exactNum = (n) => exact.format(n ?? 0);
+
+function readStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (_) {
+    /* private mode: forget it */
+  }
+}
+
+function removeStorage(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+/** Tiny DOM builder. Text always goes in as text nodes, never as HTML. */
+function h(tag, attrs, ...kids) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (value == null || value === false) continue;
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else if (key.startsWith('on') && typeof value === 'function') {
+      node.addEventListener(key.slice(2).toLowerCase(), value);
+    } else node.setAttribute(key, value === true ? '' : String(value));
+  }
+  for (const kid of kids.flat(3)) {
+    if (kid == null || kid === false) continue;
+    node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  return node;
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Math.max(0, Date.now() - then);
+  const min = 60e3;
+  const hour = 60 * min;
+  const day = 24 * hour;
+  const month = 30 * day;
+  const year = 365 * day;
+  if (diff < hour) return `${Math.max(1, Math.round(diff / min))}m ago`;
+  if (diff < day) return `${Math.round(diff / hour)}h ago`;
+  if (diff < month) return `${Math.round(diff / day)}d ago`;
+  if (diff < year) return `${Math.round(diff / month)}mo ago`;
+  return `${Math.round(diff / year)}y ago`;
+}
+
+function whenReset(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+function prettyUrl(value) {
+  return String(value).replace(/^https?:\/\//i, '').replace(/\/$/, '');
+}
+
+function normalizeUrl(value) {
+  const raw = String(value).trim();
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+}
+
+function normalizeHandle(raw) {
+  return String(raw || '')
+    .trim()
+    .replace(/^@+/, '')
+    .replace(/^https?:\/\/(www\.)?github\.com\//i, '')
+    .replace(/[/?#].*$/, '')
+    .replace(/\s+/g, '');
+}
+
+function toast(message) {
+  const node = $('#toast');
+  node.textContent = message;
+  node.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => node.classList.remove('show'), 2200);
+}
+
+function isNoreply(address) {
+  return /^noreply@github\.com$|noreply\.github\.com$/i.test(address);
+}
+
+/* ------------------------------ cache ------------------------------ */
+/*
+ * Every fetched payload is stored with its ETag and revalidated with
+ * If-None-Match. GitHub does not charge quota for a 304, so repeat scans
+ * are free, and a spent quota still opens anything already cached.
+ */
+
+function loadCache() {
+  try {
+    const parsed = JSON.parse(readStorage(CACHE_KEY) || 'null');
+    if (parsed && parsed.v === 1 && parsed.scans && typeof parsed.scans === 'object') return parsed;
+  } catch (_) {
+    /* corrupt cache: start clean */
+  }
+  return { v: 1, scans: {} };
+}
+
+let cache = loadCache();
+
+function cacheKey(login) {
+  return `${login.toLowerCase()}:${state.token ? 'auth' : 'anon'}`;
+}
+
+function cacheWrite() {
+  const now = Date.now();
+  Object.keys(cache.scans).forEach((key) => {
+    if (now - (cache.scans[key].ts || 0) > CACHE_MAX_AGE_MS) delete cache.scans[key];
+  });
+
+  let ordered = Object.keys(cache.scans).sort(
+    (a, b) => (cache.scans[b].ts || 0) - (cache.scans[a].ts || 0)
+  );
+  ordered.slice(CACHE_LOGINS).forEach((key) => delete cache.scans[key]);
+  ordered = ordered.slice(0, CACHE_LOGINS);
+
+  let payload = JSON.stringify(cache);
+  while (payload.length > CACHE_BUDGET && ordered.length > 1) {
+    delete cache.scans[ordered.pop()];
+    payload = JSON.stringify(cache);
+  }
+
+  try {
+    localStorage.setItem(CACHE_KEY, payload);
+  } catch (_) {
+    cache = { v: 1, scans: {} };
+    try {
+      localStorage.removeItem(CACHE_KEY);
+    } catch (_) {
+      /* nothing else to do */
+    }
+  }
+}
+
+function readCache(login) {
+  const record = cache.scans[cacheKey(login)];
+  if (!record || !record.user) return null;
+  if (Date.now() - (record.ts || 0) > CACHE_MAX_AGE_MS) {
+    delete cache.scans[cacheKey(login)];
+    cacheWrite();
+    return null;
+  }
+  return record;
+}
+
+function cacheAgeLabel(ts) {
+  if (!ts) return 'an earlier scan';
+  if (Date.now() - ts < 45 * 1000) return 'just now';
+  return timeAgo(new Date(ts).toISOString());
+}
+
+/* ------------------------------- API ------------------------------- */
+
+class ApiError extends Error {
+  constructor(status, message, resetAt) {
+    super(message || 'request failed');
+    this.name = 'ApiError';
+    this.status = status;
+    this.resetAt = resetAt || 0;
+  }
+}
+
+function paintRate() {
+  const node = $('#rate');
+  if (!rate.limit) {
+    node.textContent = 'rate —';
+    node.removeAttribute('data-low');
+    node.removeAttribute('title');
+    return;
+  }
+  node.textContent = `${rate.remaining}/${rate.limit}`;
+  node.dataset.low = rate.remaining <= 5 ? '1' : '0';
+  node.title = rate.remaining <= 0
+    ? `GitHub quota spent${rate.reset ? `, resets ${whenReset(rate.reset)}` : ''} · cached scans still open without it`
+    : `GitHub core limit: ${rate.remaining} of ${rate.limit} requests left${
+        rate.reset ? ` · resets ${whenReset(rate.reset)}` : ''
+      }`;
+}
+
+function applyRateHeaders(res) {
+  const limit = res.headers.get('x-ratelimit-limit');
+  const remaining = res.headers.get('x-ratelimit-remaining');
+  const reset = res.headers.get('x-ratelimit-reset');
+  if (limit !== null) rate.limit = Number(limit) || 0;
+  if (remaining !== null) rate.remaining = Number(remaining) || 0;
+  if (reset !== null) rate.reset = Number(reset) * 1000 || 0;
+  paintRate();
+}
+
+function authHeaders() {
+  const headers = { Accept: 'application/vnd.github+json' };
+  if (state.token) headers.Authorization = `Bearer ${state.token}`;
+  return headers;
+}
+
+async function api(path, etag) {
+  const headers = authHeaders();
+  if (etag) headers['If-None-Match'] = etag;
+
+  let res;
+  try {
+    res = await fetch(API + path, { headers });
+  } catch (_) {
+    throw new ApiError(0, 'network');
+  }
+  applyRateHeaders(res);
+
+  const nextEtag = res.headers.get('ETag') || etag || '';
+
+  // 304: unchanged, and GitHub does not count it against the quota.
+  if (res.status === 304) return { notModified: true, etag: nextEtag, data: null };
+
+  if (!res.ok) {
+    let payload = null;
+    try {
+      payload = await res.json();
+    } catch (_) {
+      /* empty body */
+    }
+    const resetAt = rate.reset || Number(res.headers.get('x-ratelimit-reset')) * 1000 || 0;
+    throw new ApiError(res.status, (payload && payload.message) || res.statusText, resetAt);
+  }
+
+  return { notModified: false, etag: nextEtag, data: await res.json() };
+}
+
+/* ------------------------- cached fetchers -------------------------- */
+
+const USER_FIELDS = [
+  'login', 'name', 'bio', 'avatar_url', 'html_url', 'company', 'location', 'blog',
+  'twitter_username', 'hireable', 'type', 'followers', 'following', 'public_repos',
+  'created_at', 'updated_at', 'email',
+];
+
+const REPO_FIELDS = [
+  'name', 'full_name', 'description', 'language', 'topics', 'stargazers_count',
+  'forks_count', 'pushed_at', 'created_at', 'html_url', 'private', 'fork', 'archived',
+  'is_template',
+];
+
+function pick(source, fields) {
+  const out = {};
+  if (!source) return out;
+  fields.forEach((field) => {
+    if (source[field] !== undefined) out[field] = source[field];
+  });
+  return out;
+}
+
+/** Cache records only keep the fields the page draws, so localStorage stays small. */
+function distillUser(user) {
+  const out = pick(user, USER_FIELDS);
+  if (out.bio) out.bio = String(out.bio).slice(0, 600);
+  return out;
+}
+
+function distillRepo(repo) {
+  const out = pick(repo, REPO_FIELDS);
+  if (out.description) out.description = String(out.description).slice(0, 400);
+  if (Array.isArray(out.topics)) out.topics = out.topics.slice(0, 8);
+  return out;
+}
+
+async function fetchUser(login, prev) {
+  const res = await api(`/users/${encodeURIComponent(login)}`, prev && prev.etag);
+  if (res.notModified && prev && prev.user) {
+    return { user: prev.user, etag: prev.etag, reused: true };
+  }
+  return { user: distillUser(res.data), etag: res.etag, reused: false };
+}
+
+async function fetchOrgs(login, prev) {
+  const res = await api(`/users/${encodeURIComponent(login)}/orgs?per_page=100`, prev && prev.etag);
+  const source = res.notModified && prev ? prev.orgs : Array.isArray(res.data) ? res.data : [];
+  return {
+    orgs: (source || []).map((org) => ({ login: org.login, html_url: org.html_url })),
+    etag: res.etag,
+  };
+}
+
+async function fetchRepoPages(login, prevPages, onCount) {
+  const pages = [];
+  const maxPages = Math.ceil(MAX_REPOS / API_PAGE);
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const prev = prevPages && prevPages[page - 1];
+
+    // Quota gone: keep the cached tail instead of firing requests that must fail.
+    if (rate.limit > 0 && rate.remaining <= 0) {
+      if (prevPages) pages.push(...prevPages.slice(page - 1));
+      break;
+    }
+
+    const res = await api(
+      `/users/${encodeURIComponent(login)}/repos?per_page=${API_PAGE}&page=${page}&sort=pushed&direction=desc`,
+      prev && prev.etag
+    );
+
+    const repos = res.notModified && prev
+      ? prev.repos
+      : Array.isArray(res.data)
+        ? res.data.map(distillRepo)
+        : [];
+
+    pages.push({ etag: res.etag, repos });
+
+    const total = pages.reduce((count, item) => count + item.repos.length, 0);
+    if (onCount) onCount(total);
+    if (total >= MAX_REPOS || repos.length < API_PAGE) break;
+  }
+
+  return pages;
+}
+
+async function fetchCommitEmails(login, repo, prev) {
+  const res = await api(
+    `/repos/${repo.full_name}/commits?author=${encodeURIComponent(login)}&per_page=${COMMITS_PER_REPO}`,
+    prev && prev.etag
+  );
+
+  if (res.notModified && prev) return { entry: prev, reused: true };
+
+  const found = new Map();
+  if (Array.isArray(res.data)) {
+    res.data.forEach((item) => {
+      const commit = (item && item.commit) || {};
+      const author = commit.author || {};
+      const committer = commit.committer || {};
+      [author.email, committer.email].forEach((address) => {
+        if (!address) return;
+        const key = address.toLowerCase();
+        const entry = found.get(key) || { address, count: 0 };
+        entry.count += 1;
+        found.set(key, entry);
+      });
+    });
+  }
+
+  return { entry: { etag: res.etag, emails: Array.from(found.values()) }, reused: false };
+}
+
+async function refreshRate() {
+  try {
+    const res = await fetch(`${API}/rate_limit`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const core = data && data.resources && data.resources.core;
+    if (core) {
+      rate.limit = core.limit;
+      rate.remaining = core.remaining;
+      rate.reset = core.reset * 1000;
+      paintRate();
+    }
+  } catch (_) {
+    /* offline: leave the pill alone */
+  }
+}
+
+/* ----------------------------- status ------------------------------ */
+
+function showStatus(text, action) {
+  const node = $('#status');
+  node.hidden = false;
+  node.dataset.kind = 'info';
+  node.querySelector('.spinner').hidden = Boolean(action);
+  $('#statusText').textContent = text;
+  const holder = $('#statusAction');
+  holder.replaceChildren();
+  holder.hidden = !action;
+  if (action) {
+    holder.append(h('button', { class: 'mini-btn primary', type: 'button', onclick: action.onClick }, action.label));
+  }
+}
+
+function failStatus(text, action) {
+  const node = $('#status');
+  node.hidden = false;
+  node.dataset.kind = 'error';
+  node.querySelector('.spinner').hidden = true;
+  $('#statusText').textContent = text;
+  const holder = $('#statusAction');
+  holder.replaceChildren();
+  holder.hidden = !action;
+  if (action) {
+    holder.append(h('button', { class: 'mini-btn primary', type: 'button', onclick: action.onClick }, action.label));
+  }
+}
+
+function hideStatus() {
+  const node = $('#status');
+  node.hidden = true;
+  $('#statusAction').hidden = true;
+}
+
+/* ---------------------------- rendering ---------------------------- */
+
+const LANG_COLORS = {
+  JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5', HTML: '#e34c26',
+  CSS: '#563d7c', SCSS: '#c6538c', Shell: '#89e051', C: '#89909c', 'C++': '#f34b7d',
+  'C#': '#178600', Java: '#b07219', Go: '#00ADD8', Rust: '#dea584', Ruby: '#701516',
+  PHP: '#4F5D95', Swift: '#F05138', Kotlin: '#A97BFF', Dart: '#00B4AB', Vue: '#41b883',
+  'Jupyter Notebook': '#DA5B0B', Lua: '#6b8fa3', Haskell: '#5e5086', Elixir: '#6e4a7e',
+  Scala: '#c22d40', Zig: '#ec915c', Nix: '#7e7eff', Solidity: '#AA6746', Assembly: '#6E4C13',
+  Perl: '#0298c3', R: '#198CE7', 'Objective-C': '#438eff', Clojure: '#db5855',
+  OCaml: '#e0691c', 'F#': '#b845fc', PowerShell: '#5a8fc4', Makefile: '#427819',
+  Dockerfile: '#4d8ab3', HCL: '#844FBA', TeX: '#3D6117', MDX: '#fcb32c', Svelte: '#ff3e00',
+  Astro: '#ff5a03', 'Emacs Lisp': '#c065db', 'Vim Script': '#199f4b', Nim: '#ffc200',
+  Julia: '#a270ba', Crystal: '#000100', Erlang: '#B83998', 'Common Lisp': '#3fb68b',
+};
+
+const langColor = (lang) => LANG_COLORS[lang] || '#ff5cc8';
+
+function renderProfile() {
+  const user = state.user;
+  if (!user) return;
+
+  const avatar = $('#avatar');
+  avatar.src = user.avatar_url;
+  avatar.alt = `${user.login} avatar`;
+
+  const avatarLink = $('#avatarLink');
+  avatarLink.href = user.html_url;
+  avatarLink.title = `open ${user.login} on github`;
+
+  $('#displayName').textContent = user.name || user.login;
+
+  const loginLink = $('#loginLink');
+  loginLink.textContent = `@${user.login}`;
+  loginLink.href = user.html_url;
+
+  const bio = $('#bio');
+  bio.textContent = user.bio || 'no bio on the profile.';
+  bio.classList.toggle('is-empty', !user.bio);
+
+  const chips = $('#chips');
+  chips.replaceChildren();
+  const chip = (label, opts = {}) => {
+    const shared = { class: 'chip', title: opts.title || label };
+    if (opts.href) {
+      chips.append(h('a', { ...shared, href: opts.href, target: '_blank', rel: 'noopener' }, label));
+    } else {
+      chips.append(h('span', shared, label));
+    }
+  };
+
+  if (user.company) chip(user.company.trim(), { title: 'company' });
+  if (user.location) chip(user.location.trim(), { title: 'location' });
+  if (user.blog) {
+    const href = normalizeUrl(user.blog);
+    chip(prettyUrl(user.blog), { href, title: user.blog });
+  }
+  if (user.twitter_username) chip(`x/${user.twitter_username}`, { href: `https://x.com/${user.twitter_username}`, title: 'twitter / x' });
+  if (user.hireable) chip('open to work', { title: 'hireable' });
+  if (user.type && user.type !== 'User') chip(user.type, { title: 'account type' });
+  state.orgs.forEach((org) => chip(org.login, { href: org.html_url, title: 'organisation' }));
+
+  chips.hidden = chips.childElementCount === 0;
+
+  const stars = state.repos.reduce((sum, repo) => sum + (repo.stargazers_count || 0), 0);
+  const joined = user.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    : '—';
+
+  const tiles = [
+    ['followers', exactNum(user.followers)],
+    ['following', exactNum(user.following)],
+    ['repos', exactNum(user.public_repos)],
+    ['stars', num(stars)],
+    ['joined', joined],
+    ['active', timeAgo(user.updated_at) || '—'],
+  ];
+
+  $('#stats').replaceChildren(
+    ...tiles.map(([label, value]) =>
+      h('div', { class: 'stat' },
+        h('span', { class: 'stat-label' }, label),
+        h('span', { class: 'stat-value' }, value)
+      )
+    )
+  );
+}
+
+/* ------------------------------ emails ----------------------------- */
+
+function addEmail(address, meta = {}) {
+  if (!address || typeof address !== 'string') return;
+  const address_ = address.trim();
+  if (!address_) return;
+  const key = address_.toLowerCase();
+
+  let entry = state.emails.get(key);
+  if (!entry) {
+    entry = { address: address_, count: 0, repos: new Set(), source: 'commit', tags: [] };
+    state.emails.set(key, entry);
+  }
+  if (meta.count) entry.count += meta.count;
+  if (meta.repo) entry.repos.add(meta.repo);
+  if (meta.source === 'profile' || meta.source === 'token') {
+    entry.source = meta.source;
+    entry.count = Math.max(entry.count, 1);
+  }
+  if (Array.isArray(meta.tags)) {
+    entry.tags = Array.from(new Set([...entry.tags, ...meta.tags]));
+  }
+}
+
+function visibleEmails() {
+  const all = Array.from(state.emails.values());
+  const shown = state.includeNoreply ? all : all.filter((entry) => !isNoreply(entry.address));
+  const rank = (entry) => (entry.source === 'profile' ? 0 : entry.source === 'token' ? 1 : 2);
+  return shown.sort(
+    (a, b) => rank(a) - rank(b) || b.count - a.count || a.address.localeCompare(b.address)
+  );
+}
+
+function renderEmails() {
+  const shown = visibleEmails();
+  const list = $('#emailList');
+  $('#emailCount').textContent = String(shown.length);
+
+  const rows = shown.map((entry) => {
+    const tags = [];
+    if (entry.source === 'profile') tags.push('profile');
+    if (entry.source === 'token') tags.push('account');
+    entry.tags.forEach((tag) => tags.push(tag));
+    if (entry.count > 1) tags.push(`${entry.count} commits`);
+
+    const repos = Array.from(entry.repos);
+    repos.slice(0, 2).forEach((repo) => tags.push(repo));
+    if (repos.length > 2) tags.push(`+${repos.length - 2} repos`);
+
+    return h('li', { class: isNoreply(entry.address) ? 'email-row is-noreply' : 'email-row' },
+      h('button', {
+        class: 'email-val',
+        type: 'button',
+        title: 'click to copy',
+        onclick: (event) => copyText(entry.address, event.currentTarget),
+      }, entry.address),
+      h('span', { class: 'email-meta' }, ...tags.map((tag) => h('span', { class: 'tag' }, tag)))
+    );
+  });
+
+  if (!rows.length) {
+    list.replaceChildren(
+      h('li', { class: 'empty' },
+        state.phase === 'emails' ? 'sweeping public commits…' : 'no public email surfaced. their commits are clean.')
+    );
+  } else {
+    list.replaceChildren(...rows);
+  }
+
+  const note = $('#emailNote');
+  if (state.phase === 'repos') {
+    note.textContent = 'loading repositories…';
+    return;
+  }
+  if (state.phase === 'emails') {
+    note.textContent = 'sweeping public commits for author addresses…';
+    return;
+  }
+
+  if (!shown.length) {
+    note.textContent = Array.from(state.emails.keys()).length
+      ? 'only noreply addresses were found — tick the toggle below to reveal them.'
+      : 'nothing in the profile, the account, or the scanned commits.';
+    return;
+  }
+
+  const sources = [];
+  if (shown.some((entry) => entry.source === 'profile')) sources.push('profile field');
+  if (shown.some((entry) => entry.source === 'token')) sources.push('account emails');
+  const repoCount = new Set();
+  shown.forEach((entry) => entry.repos.forEach((repo) => repoCount.add(repo)));
+  if (repoCount.size) sources.push(`${repoCount.size} repositor${repoCount.size === 1 ? 'y' : 'ies'}`);
+
+  note.textContent = `${shown.length} address${shown.length === 1 ? '' : 'es'} · from ${sources.join(', ')}`;
+}
+
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`copied ${text}`);
+  } catch (_) {
+    const scratch = document.createElement('textarea');
+    scratch.value = text;
+    scratch.setAttribute('readonly', '');
+    scratch.style.position = 'fixed';
+    scratch.style.opacity = '0';
+    document.body.append(scratch);
+    scratch.select();
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (_) {
+      ok = false;
+    }
+    scratch.remove();
+    toast(ok ? `copied ${text}` : 'copy blocked by the browser');
+  }
+  if (button) {
+    button.classList.add('copied');
+    setTimeout(() => button.classList.remove('copied'), 600);
+  }
+}
+
+/* --------------------------- email dig ----------------------------- */
+
+function setDigProgress(done, total) {
+  const percent = total ? Math.round((done / total) * 100) : 0;
+  $('#digBar').style.width = `${percent}%`;
+  $('#digLabel').textContent = `${done}/${total}`;
+}
+
+async function scanEmails(login, runId, record) {
+  const user = state.user;
+
+  if (user && user.email) addEmail(user.email, { source: 'profile' });
+
+  if (state.token && user && user.login) {
+    try {
+      const me = (await api('/user')).data;
+      if (me && me.login && me.login.toLowerCase() === user.login.toLowerCase()) {
+        const list = (await api('/user/emails?per_page=100')).data;
+        if (Array.isArray(list)) {
+          list.forEach((item) => {
+            if (!item.email) return;
+            const tags = [];
+            if (item.primary) tags.push('primary');
+            if (item.verified) tags.push('verified');
+            addEmail(item.email, { source: 'token', tags });
+          });
+        }
+      }
+    } catch (_) {
+      /* token without email scope, or a different account: skip quietly */
+    }
+  }
+
+  renderEmails();
+
+  const targets = state.repos
+    .slice()
+    .sort((a, b) => new Date(b.pushed_at || 0) - new Date(a.pushed_at || 0))
+    .slice(0, SCAN_REPOS);
+
+  if (!targets.length) return;
+
+  // No quota left: never fire requests that are guaranteed to fail.
+  if (rate.limit > 0 && rate.remaining <= 0) return;
+
+  const progress = $('#digProgress');
+  progress.hidden = false;
+  setDigProgress(0, targets.length);
+
+  const queue = targets.slice();
+  let done = 0;
+  let blocked = false;
+
+  const worker = async () => {
+    for (;;) {
+      if (runId !== state.scanToken || blocked || !queue.length) return;
+      const repo = queue.shift();
+      const previous = record.commits && record.commits[repo.full_name];
+
+      try {
+        const result = await fetchCommitEmails(login, repo, previous);
+        record.commits = record.commits || {};
+        record.commits[repo.full_name] = result.entry;
+        result.entry.emails.forEach((item) => {
+          addEmail(item.address, { repo: repo.name, count: item.count || 1 });
+        });
+      } catch (err) {
+        if (err instanceof ApiError && (err.status === 403 || err.status === 429)) {
+          blocked = true;
+          return;
+        }
+        /* 404 / 409 / 451: empty, private or blocked repo — keep going */
+      }
+
+      done += 1;
+      if (runId !== state.scanToken) return;
+      setDigProgress(done, targets.length);
+      renderEmails();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    }
+  };
+
+  await Promise.all(Array.from({ length: SCAN_CONCURRENCY }, worker));
+
+  if (runId !== state.scanToken) return;
+  progress.hidden = true;
+  renderEmails();
+
+  if (blocked) {
+    $('#emailNote').textContent = 'out of github quota for now — cached addresses stay visible and the sweep resumes on the next scan.';
+  }
+}
+
+/* ------------------------------ repos ------------------------------ */
+
+function sortedRepos() {
+  const query = state.repoQuery.trim().toLowerCase();
+  let list = state.repos;
+
+  if (query) {
+    list = list.filter((repo) =>
+      `${repo.name} ${repo.description || ''} ${repo.language || ''} ${(repo.topics || []).join(' ')}`
+        .toLowerCase()
+        .includes(query)
+    );
+  }
+
+  const sorters = {
+    updated: (a, b) => new Date(b.pushed_at || 0) - new Date(a.pushed_at || 0),
+    stars: (a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0),
+    name: (a, b) => a.name.localeCompare(b.name),
+    created: (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
+  };
+
+  return list.slice().sort(sorters[state.repoSort] || sorters.updated);
+}
+
+function repoRow(repo) {
+  const badges = [];
+  if (repo.private) badges.push(h('span', { class: 'tag' }, 'private'));
+  if (repo.fork) badges.push(h('span', { class: 'tag' }, 'fork'));
+  if (repo.archived) badges.push(h('span', { class: 'tag' }, 'archived'));
+  if (repo.is_template) badges.push(h('span', { class: 'tag' }, 'template'));
+
+  const meta = [];
+  if (repo.language) {
+    meta.push(h('span', { class: 'lang' },
+      h('i', { style: `background:${langColor(repo.language)}` }),
+      repo.language
+    ));
+  }
+  meta.push(h('span', {}, `★ ${num(repo.stargazers_count || 0)}`));
+  if (repo.forks_count) meta.push(h('span', {}, `⑂ ${num(repo.forks_count)}`));
+  if (repo.pushed_at) meta.push(h('span', {}, timeAgo(repo.pushed_at)));
+  (repo.topics || []).slice(0, 3).forEach((topic) => meta.push(h('span', { class: 'topic' }, `#${topic}`)));
+
+  return h('li', { class: 'repo' },
+    h('div', { class: 'repo-top' },
+      h('a', { class: 'repo-name', href: repo.html_url, target: '_blank', rel: 'noopener' }, repo.name),
+      ...badges,
+      h('span', { class: 'repo-star', title: `${exactNum(repo.stargazers_count || 0)} stars` }, `★ ${num(repo.stargazers_count || 0)}`)
+    ),
+    repo.description ? h('p', { class: 'repo-desc', title: repo.description }, repo.description) : null,
+    h('div', { class: 'repo-meta' }, ...meta)
+  );
+}
+
+function renderRepos() {
+  const list = $('#repoList');
+  const all = sortedRepos();
+  const slice = all.slice(0, state.repoVisible);
+  $('#repoCount').textContent = String(state.repos.length);
+
+  if (!all.length) {
+    list.replaceChildren(
+      h('li', { class: 'empty' },
+        state.repos.length ? 'no repository matches that filter.' : 'no public repositories. a quiet one.')
+    );
+  } else {
+    list.replaceChildren(...slice.map(repoRow));
+  }
+
+  const more = $('#showMore');
+  const remaining = all.length - slice.length;
+  more.hidden = remaining <= 0;
+  if (remaining > 0) more.textContent = `show ${Math.min(REPO_CHUNK, remaining)} more · ${remaining} left`;
+}
+
+function renderLanguages() {
+  const counts = new Map();
+  state.repos.forEach((repo) => {
+    if (!repo.language) return;
+    counts.set(repo.language, (counts.get(repo.language) || 0) + 1);
+  });
+
+  const total = Array.from(counts.values()).reduce((sum, n) => sum + n, 0);
+  const bar = $('#langBar');
+  if (!total) {
+    bar.hidden = true;
+    return;
+  }
+
+  const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  const shown = top.slice(0, 7);
+
+  bar.hidden = false;
+  bar.replaceChildren(
+    h('div', { class: 'lang-track' },
+      ...shown.map(([lang, count]) =>
+        h('span', {
+          class: 'lang-seg',
+          style: `width:${((count / total) * 100).toFixed(2)}%;background:${langColor(lang)}`,
+          title: `${lang} · ${count} repos`,
+        })
+      )
+    ),
+    h('div', { class: 'lang-legend' },
+      ...shown.slice(0, 5).map(([lang, count]) =>
+        h('span', { class: 'lang-item' },
+          h('i', { style: `background:${langColor(lang)}` }),
+          `${lang} ${Math.round((count / total) * 100)}%`
+        )
+      )
+    )
+  );
+}
+
+/* ----------------------------- recents ----------------------------- */
+
+function loadRecents() {
+  try {
+    const parsed = JSON.parse(readStorage(RECENT_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((item) => item && item.login) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function addRecent(login, avatarUrl) {
+  const list = loadRecents().filter((item) => item.login.toLowerCase() !== login.toLowerCase());
+  list.unshift({ login, avatar: avatarUrl || '' });
+  writeStorage(RECENT_KEY, JSON.stringify(list.slice(0, 8)));
+  paintRecents();
+}
+
+function paintRecents() {
+  const node = $('#recents');
+  const list = loadRecents();
+  node.replaceChildren(
+    ...list.map((item) =>
+      h('button', { class: 'recent', type: 'button', title: `scan @${item.login}`, onclick: () => lookup(item.login) },
+        item.avatar ? h('img', { src: item.avatar, alt: '', loading: 'lazy' }) : null,
+        `@${item.login}`
+      )
+    )
+  );
+  node.hidden = list.length === 0;
+}
+
+/* ----------------------------- lookup ------------------------------ */
+
+function resetResults() {
+  state.user = null;
+  state.repos = [];
+  state.orgs = [];
+  state.emails = new Map();
+  state.fromCache = false;
+  state.fallback = false;
+  state.phase = 'idle';
+  state.includeNoreply = false;
+  state.repoSort = 'updated';
+  state.repoQuery = '';
+  state.repoVisible = REPO_CHUNK;
+
+  $('#includeNoreply').checked = false;
+  $('#repoFilter').value = '';
+  $('#repoSort').value = 'updated';
+  $('#results').hidden = true;
+  $('#emailList').replaceChildren();
+  $('#repoList').replaceChildren();
+  $('#emailCount').textContent = '0';
+  $('#repoCount').textContent = '0';
+  $('#digProgress').hidden = true;
+  $('#digBar').style.width = '0';
+  $('#langBar').hidden = true;
+  $('#showMore').hidden = true;
+}
+
+function reportFailure(err, login) {
+  if (err instanceof ApiError) {
+    if (err.status === 404) {
+      failStatus(`no github account named @${login} — check the spelling and try again.`);
+      return;
+    }
+    if (err.status === 403 || err.status === 429) {
+      const when = err.resetAt ? ` resets around ${whenReset(err.resetAt)}.` : '';
+      const message = state.token
+        ? `github refused the request (${err.status}).${when} the token may be invalid or out of quota.`
+        : `github rate limit reached.${when} a token lifts it from 60 to 5,000 requests an hour.`;
+      failStatus(message, { label: 'add a token', onClick: openTokenDialog });
+      return;
+    }
+    if (err.status === 401) {
+      failStatus('github rejected the token. remove it and try again without one.', {
+        label: 'fix token',
+        onClick: openTokenDialog,
+      });
+      return;
+    }
+    failStatus(`github said ${err.status}: ${err.message}`);
+    return;
+  }
+  failStatus('could not reach github. check the connection and try again.');
+}
+
+function snapshotEmails() {
+  return Array.from(state.emails.values()).map((entry) => ({
+    address: entry.address,
+    count: entry.count,
+    repos: Array.from(entry.repos),
+    source: entry.source,
+    tags: entry.tags || [],
+  }));
+}
+
+/** Paint a cache record with no network access at all. */
+function hydrate(record) {
+  state.user = record.user;
+  state.orgs = Array.isArray(record.orgs) ? record.orgs : [];
+  state.repos = (record.pages || []).reduce((all, page) => all.concat(page.repos || []), []);
+  state.emails = new Map();
+  (record.emails || []).forEach((entry) => {
+    if (!entry || !entry.address) return;
+    state.emails.set(entry.address.toLowerCase(), {
+      address: entry.address,
+      count: entry.count || 0,
+      repos: new Set(entry.repos || []),
+      source: entry.source || 'commit',
+      tags: entry.tags || [],
+    });
+  });
+  state.fromCache = true;
+  state.fallback = Boolean(record.fallback);
+}
+
+function paintResults() {
+  if (!state.user) return;
+  renderProfile();
+  $('#results').hidden = false;
+  renderLanguages();
+  renderRepos();
+  renderEmails();
+  paintCacheBadge();
+}
+
+function paintCacheBadge() {
+  const badge = $('#cacheBadge');
+  const refresh = $('#refreshScan');
+  const record = state.user ? readCache(state.login) : null;
+
+  if (!record) {
+    badge.hidden = true;
+    refresh.hidden = true;
+    return;
+  }
+
+  badge.hidden = false;
+  refresh.hidden = false;
+  const fromPages = state.fallback;
+  badge.dataset.cached = state.fromCache || fromPages ? '1' : '0';
+  badge.textContent = fromPages
+    ? 'public pages'
+    : state.fromCache
+      ? `cached · ${cacheAgeLabel(record.ts)}`
+      : 'live';
+  badge.title = fromPages
+    ? 'read from github public pages — the api allowance was spent'
+    : state.fromCache
+      ? 'served from this browser cache — no requests spent'
+      : 'freshly fetched from github';
+}
+
+function updateHash(login) {
+  try {
+    history.replaceState(null, '', `#@${login}`);
+  } catch (_) {
+    /* ignore hash issues on file:// */
+  }
+}
+
+function reportSearch(mode) {
+  const emails = visibleEmails().map((entry) => entry.address);
+
+  try {
+    console.info(
+      `[vOidnet] @${state.login} · ${emails.length} email${emails.length === 1 ? '' : 's'}`,
+      emails
+    );
+  } catch (_) {
+    /* console unavailable */
+  }
+
+  // Only the bundled server.py can record this; a plain static host just 404s.
+  if (!/^https?:$/.test(location.protocol)) return;
+
+  try {
+    fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        login: state.login,
+        emails,
+        repos: state.repos.length,
+        mode,
+        at: new Date().toISOString(),
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch (_) {
+    /* offline copy of the page */
+  }
+}
+
+/* When the api allowance is spent, this local server reads github's public
+   pages instead: profile and repositories from the html, addresses from the
+   commit search endpoint, which has its own separate allowance. */
+async function loadFallback(login, runId) {
+  if (runId !== state.scanToken) return false;
+  showStatus(`github api allowance is spent — reading public pages for @${login}…`);
+
+  try {
+    const res = await fetch(`/api/scan?login=${encodeURIComponent(login)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`fallback ${res.status}`);
+    const data = await res.json();
+    if (runId !== state.scanToken) return false;
+    if (!data || !data.user) throw new Error('empty fallback');
+
+    state.login = data.user.login;
+    state.user = data.user;
+    state.orgs = Array.isArray(data.orgs) ? data.orgs : [];
+    state.repos = Array.isArray(data.repos) ? data.repos : [];
+    state.emails = new Map();
+    (Array.isArray(data.emails) ? data.emails : []).forEach((entry) => {
+      if (!entry || !entry.address) return;
+      state.emails.set(entry.address.toLowerCase(), {
+        address: entry.address,
+        count: entry.count || 1,
+        repos: new Set(entry.repos || []),
+        source: entry.source || 'commit',
+        tags: entry.tags || [],
+      });
+    });
+
+    state.fallback = true;
+    state.fromCache = false;
+    state.phase = 'done';
+    state.repoVisible = REPO_CHUNK;
+    state.repoQuery = '';
+    state.repoSort = 'updated';
+
+    hideStatus();
+    paintResults();
+    addRecent(state.user.login, state.user.avatar_url);
+    updateHash(state.user.login);
+
+    cache.scans[cacheKey(login)] = {
+      login: state.user.login,
+      ts: Date.now(),
+      auth: false,
+      fallback: true,
+      user: state.user,
+      userEtag: '',
+      orgs: state.orgs,
+      orgsEtag: '',
+      pages: [{ etag: '', repos: state.repos }],
+      commits: {},
+      emails: snapshotEmails(),
+    };
+    cacheWrite();
+    paintCacheBadge();
+    reportSearch('fallback');
+    return true;
+  } catch (err) {
+    if (runId === state.scanToken) hideStatus();
+    return false;
+  }
+}
+
+async function lookup(raw, options = {}) {
+  const login = normalizeHandle(raw);
+  if (!login) return;
+
+  const runId = (state.scanToken += 1);
+  state.login = login;
+  resetResults();
+  $('#handle').value = login;
+
+  const record = readCache(login);
+  const fresh = record && Date.now() - (record.ts || 0) < CACHE_FRESH_MS;
+  const spent = rate.limit > 0 && rate.remaining <= 0;
+  const tokenAction = () => (state.token ? null : { label: 'add a token', onClick: openTokenDialog });
+
+  // Fresh cache, or no quota left: answer instantly with zero requests.
+  if (record && !options.force && (fresh || spent)) {
+    hydrate(record);
+    state.phase = 'done';
+    paintResults();
+    addRecent(record.user.login, record.user.avatar_url);
+    updateHash(record.user.login);
+    hideStatus();
+    reportSearch('cache');
+    if (spent && !fresh) {
+      showStatus(
+        `github quota is spent — showing the cached scan from ${cacheAgeLabel(record.ts)}. it opens without any requests.`,
+        tokenAction()
+      );
+    }
+    return;
+  }
+
+  // Nothing cached and no api allowance left: read github's public pages instead.
+  if (!record && spent) {
+    if (await loadFallback(login, runId)) return;
+    if (runId !== state.scanToken) return;
+    const when = rate.reset ? ` it resets around ${whenReset(rate.reset)}.` : '';
+    failStatus(
+      `github's api allowance is spent${when} and the public-page fallback could not read @${login}. add a token for 5,000 an hour.`,
+      { label: 'add a token', onClick: openTokenDialog }
+    );
+    return;
+  }
+
+  // Stale cache: paint it first, then revalidate cheaply with ETags.
+  if (record) {
+    hydrate(record);
+    state.phase = 'repos';
+    paintResults();
+    showStatus(`showing cached @${login} · checking for changes…`, tokenAction());
+  } else {
+    showStatus(`reaching for @${login}…`);
+  }
+
+  try {
+    const userResult = await fetchUser(login, record && { user: record.user, etag: record.userEtag });
+    if (runId !== state.scanToken) return;
+
+    const user = userResult.user;
+    state.user = user;
+    state.phase = 'repos';
+
+    if (!record) {
+      $('#results').hidden = false;
+      renderProfile();
+      renderEmails();
+    } else {
+      renderProfile();
+    }
+
+    const orgsResult = await fetchOrgs(login, record && { orgs: record.orgs, etag: record.orgsEtag })
+      .catch(() => ({ orgs: (record && record.orgs) || [], etag: record && record.orgsEtag }));
+    if (runId !== state.scanToken) return;
+
+    state.orgs = orgsResult.orgs || [];
+    renderProfile();
+
+    showStatus(`loading ${exactNum(user.public_repos)} repositor${user.public_repos === 1 ? 'y' : 'ies'}…`);
+
+    const pages = await fetchRepoPages(login, record && record.pages, (count) => {
+      if (runId === state.scanToken) showStatus(`loading repositories… ${count} so far`);
+    });
+    if (runId !== state.scanToken) return;
+
+    state.repos = pages.reduce((all, page) => all.concat(page.repos || []), []);
+    state.phase = 'emails';
+    renderProfile();
+    renderLanguages();
+    renderRepos();
+    renderEmails();
+    hideStatus();
+    addRecent(user.login, user.avatar_url);
+    updateHash(user.login);
+
+    const next = {
+      login: user.login,
+      ts: Date.now(),
+      auth: Boolean(state.token),
+      user,
+      userEtag: userResult.etag,
+      orgs: state.orgs,
+      orgsEtag: orgsResult.etag,
+      pages,
+      commits: (record && record.commits) || {},
+      emails: [],
+    };
+
+    setDigProgress(0, Math.min(state.repos.length, SCAN_REPOS));
+    await scanEmails(login, runId, next);
+    if (runId !== state.scanToken) return;
+
+    state.phase = 'done';
+    state.fromCache = false;
+    state.fallback = false;
+    $('#digProgress').hidden = true;
+    next.emails = snapshotEmails();
+    next.ts = Date.now();
+    cache.scans[cacheKey(login)] = next;
+    cacheWrite();
+    paintCacheBadge();
+    renderEmails();
+    reportSearch('live');
+    refreshRate();
+  } catch (err) {
+    if (runId !== state.scanToken) return;
+    state.phase = 'idle';
+    $('#digProgress').hidden = true;
+
+    // A failed refresh must never throw away a usable cached scan.
+    if (record && record.user) {
+      hydrate(record);
+      state.phase = 'done';
+      paintResults();
+      paintCacheBadge();
+      const status = err instanceof ApiError ? err.status || 'offline' : 'offline';
+      showStatus(
+        `could not refresh @${login} (${status}) — showing the cached scan from ${cacheAgeLabel(record.ts)}.`,
+        tokenAction()
+      );
+      return;
+    }
+
+    // A spent api allowance mid-scan still has the public-page route open.
+    if (err instanceof ApiError && (err.status === 403 || err.status === 429)) {
+      if (await loadFallback(login, runId)) return;
+      if (runId !== state.scanToken) return;
+    }
+
+    reportFailure(err, login);
+  }
+}
+
+/* ------------------------------ token ------------------------------ */
+
+function paintToken() {
+  $('#tokenDot').dataset.on = state.token ? '1' : '0';
+  $('#tokenLabel').textContent = state.token ? 'token on' : 'add token';
+}
+
+function openTokenDialog() {
+  const dialog = $('#tokenDialog');
+  const input = $('#tokenInput');
+  input.value = '';
+  input.placeholder = state.token ? '•••••••• saved' : 'ghp_…';
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open', '');
+  setTimeout(() => input.focus(), 30);
+}
+
+function closeTokenDialog() {
+  const dialog = $('#tokenDialog');
+  if (typeof dialog.close === 'function') dialog.close();
+  else dialog.removeAttribute('open');
+}
+
+function saveToken() {
+  const value = $('#tokenInput').value.trim();
+  if (!value) {
+    closeTokenDialog();
+    return;
+  }
+  state.token = value;
+  writeStorage(TOKEN_KEY, value);
+  paintToken();
+  closeTokenDialog();
+  refreshRate();
+  toast('token saved to this browser');
+}
+
+function clearToken() {
+  state.token = '';
+  removeStorage(TOKEN_KEY);
+  paintToken();
+  closeTokenDialog();
+  refreshRate();
+  toast('token removed');
+}
+
+/* ------------------------------- csv ------------------------------- */
+
+function exportCsv() {
+  const entries = visibleEmails();
+  if (!entries.length) {
+    toast('nothing to export yet');
+    return;
+  }
+
+  const rows = [['login', 'email', 'commits', 'repos']];
+  entries.forEach((entry) => {
+    rows.push([state.login, entry.address, entry.count || '', Array.from(entry.repos).join(' | ')]);
+  });
+
+  const csv = rows
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = h('a', { href: url, download: `${state.login}_emails.csv` });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  toast(`exported ${entries.length} email${entries.length === 1 ? '' : 's'}`);
+}
+
+function copyAllEmails() {
+  const entries = visibleEmails();
+  if (!entries.length) {
+    toast('no emails to copy');
+    return;
+  }
+  copyText(entries.map((entry) => entry.address).join('\n'));
+}
+
+/* ------------------------------- init ------------------------------ */
+
+function init() {
+  paintToken();
+  paintRecents();
+  refreshRate();
+
+  $('#searchForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    lookup($('#handle').value);
+  });
+
+  $('#tokenBtn').addEventListener('click', openTokenDialog);
+
+  $('#refreshScan').addEventListener('click', () => {
+    if (state.login) lookup(state.login, { force: true });
+  });
+  $('#saveToken').addEventListener('click', saveToken);
+  $('#clearToken').addEventListener('click', clearToken);
+  $('#cancelToken').addEventListener('click', closeTokenDialog);
+
+  $('#tokenDialog').addEventListener('click', (event) => {
+    if (event.target === $('#tokenDialog')) closeTokenDialog();
+  });
+
+  $('#tokenInput').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveToken();
+    }
+  });
+
+  $('#includeNoreply').addEventListener('change', (event) => {
+    state.includeNoreply = event.target.checked;
+    renderEmails();
+  });
+
+  $('#repoFilter').addEventListener('input', (event) => {
+    state.repoQuery = event.target.value;
+    state.repoVisible = REPO_CHUNK;
+    renderRepos();
+  });
+
+  $('#repoSort').addEventListener('change', (event) => {
+    state.repoSort = event.target.value;
+    state.repoVisible = REPO_CHUNK;
+    renderRepos();
+  });
+
+  $('#showMore').addEventListener('click', () => {
+    state.repoVisible += REPO_CHUNK;
+    renderRepos();
+  });
+
+  $('#copyEmails').addEventListener('click', copyAllEmails);
+  $('#exportCsv').addEventListener('click', exportCsv);
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === '/' && document.activeElement !== $('#handle')) {
+      event.preventDefault();
+      $('#handle').focus();
+      $('#handle').select();
+    }
+  });
+
+  const hash = location.hash.replace(/^#@?/, '').trim();
+  if (hash) {
+    const login = normalizeHandle(decodeURIComponent(hash));
+    if (login) lookup(login);
+  }
+}
+
+init();
+  </script>
+</body>
+</html>
